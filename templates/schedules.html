@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Collection Schedules | EcoClean WMS{% endblock %}
+
+{% block content %}
+    <div class="hero">
+        <h1>Waste Collection Schedules & Pickup Dates</h1>
+        <p>Schedule waste pickups for registered Complaint IDs and check area collection timings.</p>
+    </div>
+
+    {% if success_message %}
+    <div class="id-banner">
+        <h3>✅ {{ success_message }}</h3>
+    </div>
+    {% endif %}
+
+    <div class="grid">
+        <!-- LEFT: Assign Pickup Date to a Complaint ID -->
+        <div class="col-left">
+            <div class="card">
+                <div class="card-header-green">📅 Schedule Pickup for a Complaint</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="schedule_pickup">
+
+                        <label>Complaint ID (from Module 1)</label>
+                        <input type="text" name="complaint_id" placeholder="e.g. WMS-1234" required>
+
+                        <div class="row-2">
+                            <div>
+                                <label>Collection Date</label>
+                                <input type="date" name="pickup_date" required>
+                            </div>
+                            <div>
+                                <label>Time Slot</label>
+                                <select name="time_slot" required>
+                                    <option value="" disabled selected>-- Select Slot --</option>
+                                    <option value="Morning (7:00 AM - 10:00 AM)">Morning (7:00 AM - 10:00 AM)</option>
+                                    <option value="Afternoon (12:00 PM - 3:00 PM)">Afternoon (12:00 PM - 3:00 PM)</option>
+                                    <option value="Evening (4:00 PM - 7:00 PM)">Evening (4:00 PM - 7:00 PM)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <label>Assigned Vehicle / Team</label>
+                        <input type="text" name="vehicle_no" placeholder="e.g. Truck TN-01-AB-1234 (Zone A)" required>
+
+                        <button type="submit" class="btn-submit">Confirm Collection Schedule</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Check Scheduled Date by Complaint ID -->
+        <div class="col-right">
+            <div class="card">
+                <div class="card-header-blue">🚛 Check Pickup Schedule</div>
+                <div class="card-body">
+                    <form method="POST" class="search-bar">
+                        <input type="hidden" name="action" value="check_schedule">
+                        <input type="text" name="search_id" placeholder="Enter Complaint ID (e.g. WMS-1234)" required>
+                        <button type="submit" class="btn-search">Check</button>
+                    </form>
+
+                    {% if error_message %}
+                    <div class="error-box">⚠️ {{ error_message }}</div>
+                    {% endif %}
+
+                    {% if schedule_result %}
+                    <div class="ticket">
+                        <div class="ticket-top">
+                            <strong style="color: #58a6ff; font-size: 18px;">{{ schedule_result.complaint_id }}</strong>
+                            <span class="badge-status">{{ schedule_result.status }}</span>
+                        </div>
+                        <p><b>Location:</b> {{ schedule_result.location }}</p>
+                        <p><b>Waste Type:</b> <span class="badge-cat">{{ schedule_result.category }}</span></p>
+                        <p><b>Pickup Date:</b> {{ schedule_result.pickup_date }}</p>
+                        <p><b>Time Slot:</b> {{ schedule_result.time_slot }}</p>
+                        <p><b>Assigned Vehicle:</b> {{ schedule_result.vehicle_no }}</p>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        Enter a Complaint ID above to view its scheduled pickup date and time slot.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
