@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard & Reports | EcoClean WMS{% endblock %}
+
+{% block content %}
+    <div class="hero">
+        <h1>📊 Admin Dashboard & Reports</h1>
+        <p>Live complaint statistics, waste category breakdown, and downloadable area-wise reports.</p>
+    </div>
+
+    {% if success_message %}
+    <div class="id-banner">
+        <h3>✅ {{ success_message }}</h3>
+    </div>
+    {% endif %}
+
+    <!-- TOP SUMMARY STATS ROW -->
+    <div class="grid" style="margin-bottom: 25px;">
+        <div class="card" style="flex: 1; min-width: 220px;">
+            <div class="card-header-blue">📋 Total Complaints</div>
+            <div class="card-body" style="text-align: center;">
+                <span class="id-code">{{ total_complaints }}</span>
+            </div>
+        </div>
+
+        <div class="card" style="flex: 1; min-width: 220px;">
+            <div class="card-header-green">✅ Resolved Issues</div>
+            <div class="card-body" style="text-align: center;">
+                <span class="id-code" style="color: #3fb950; border-color: #3fb950;">{{ resolved_count }}</span>
+            </div>
+        </div>
+
+        <div class="card" style="flex: 1; min-width: 220px;">
+            <div class="card-header-blue" style="background-color: #da3633;">⚠️ Unresolved / Pending</div>
+            <div class="card-body" style="text-align: center;">
+                <span class="id-code" style="color: #f85149; border-color: #f85149;">{{ unresolved_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDDLE ROW: WASTE CATEGORY STATS & AREA-WISE UNRESOLVED SUMMARY -->
+    <div class="grid" style="margin-bottom: 25px;">
+        <!-- LEFT: Waste Category Statistics -->
+        <div class="col-right">
+            <div class="card">
+                <div class="card-header-green">♻️ Waste Category Statistics</div>
+                <div class="card-body">
+                    {% if category_stats %}
+                        {% for cat, info in category_stats.items() %}
+                        <div class="ticket" style="margin-bottom: 12px;">
+                            <div class="ticket-top">
+                                <span class="badge-cat">{{ cat }}</span>
+                                <strong style="color: #58a6ff;">{{ info.count }} ({{ info.percent }}%)</strong>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">No complaints registered yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Area-Wise Unresolved Issues + CSV Download -->
+        <div class="col-left">
+            <div class="card">
+                <div class="card-header-blue" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <span>📍 Area-Wise Unresolved Issues</span>
+                    <a href="/download-report" class="copy-btn" style="text-decoration: none; font-size: 13px;">⬇️ Download CSV Report</a>
+                </div>
+                <div class="card-body">
+                    {% if area_unresolved %}
+                        {% for area, items in area_unresolved.items() %}
+                        <div class="ticket" style="margin-bottom: 12px;">
+                            <div class="ticket-top">
+                                <strong style="color: #ffffff; font-size: 16px;">{{ area }}</strong>
+                                <span class="badge-status" style="background-color: #da3633; color: #ffffff;">{{ items|length }} Unresolved</span>
+                            </div>
+                            <p><b>Pending IDs:</b> <span style="color: #58a6ff;">{{ items | map(attribute='id') | join(', ') }}</span></p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">🎉 Zero unresolved issues across all areas!</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM: DETAILED UNRESOLVED COMPLAINTS & MARK RESOLVED -->
+    <div class="card">
+        <div class="card-header-green">🛠️ Unresolved Complaints Action List</div>
+        <div class="card-body">
+            <form method="GET" action="/admin" class="search-bar" style="margin-bottom: 20px;">
+                <select name="area">
+                    <option value="ALL">All Areas</option>
+                    {% for area in all_areas %}
+                        <option value="{{ area }}" {% if selected_area == area %}selected{% endif %}>{{ area }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-search">Filter Area</button>
+            </form>
+
+            {% if unresolved_list %}
+                {% for item in unresolved_list %}
+                <div class="ticket" style="margin-bottom: 15px;">
+                    <div class="ticket-top">
+                        <strong style="color: #58a6ff; font-size: 18px;">{{ item.id }}</strong>
+                        <span class="badge-status">{{ item.status }}</span>
+                    </div>
+                    <p><b>Area / Location:</b> {{ item.location }}</p>
+                    <p><b>Waste Type:</b> <span class="badge-cat">{{ item.category }}</span></p>
+                    <p><b>Resident:</b> {{ item.name }} ({{ item.phone }})</p>
+                    <p><b>Reported On:</b> {{ item.date }}</p>
+                    <p><b>Issue:</b> {{ item.description }}</p>
+
+                    <form method="POST" action="/admin" style="margin-top: 10px;">
+                        <input type="hidden" name="resolve_id" value="{{ item.id }}">
+                        <button type="submit" class="copy-btn" style="margin-left: 0;">✅ Mark as Resolved</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">No unresolved complaints found for this selection.</div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
