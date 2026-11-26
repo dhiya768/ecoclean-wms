@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="hero">
+        <h1>Keep Our City Clean & Green</h1>
+        <p>Register waste complaints with photo proof and track status using your Complaint ID.</p>
+    </div>
+
+    <!-- PROMINENT COMPLAINT ID DISPLAY BANNER -->
+    {% if generated_id %}
+    <div class="id-banner">
+        <h3>✅ Complaint Registered Successfully!</h3>
+        <p style="color: #c9d1d9; font-size: 14px;">Please save this Complaint ID to track your complaint status:</p>
+        <div>
+            <span class="id-code" id="cid">{{ generated_id }}</span>
+            <button class="copy-btn" onclick="copyID()">Copy ID</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid">
+        <!-- LEFT: Registration Form -->
+        <div class="col-left">
+            <div class="card">
+                <div class="card-header-green">📝 Register a New Complaint</div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="register">
+
+                        <div class="row-2">
+                            <div>
+                                <label>Full Name</label>
+                                <input type="text" name="name" placeholder="Enter your name" required>
+                            </div>
+                            <div>
+                                <label>Phone Number (10 digits)</label>
+                                <input type="tel" name="phone" placeholder="e.g. 9876543210" pattern="[0-9]{10}" required>
+                            </div>
+                        </div>
+
+                        <label>Location / Landmark</label>
+                        <input type="text" name="location" placeholder="Enter street or landmark" required>
+
+                        <label>Waste Category</label>
+                        <select name="category" required>
+                            <option value="" disabled selected>-- Select Category --</option>
+                            <option value="Plastic">Plastic Waste</option>
+                            <option value="Paper">Paper Waste</option>
+                            <option value="Organic">Organic Waste</option>
+                        </select>
+
+                        <label>Complaint Description</label>
+                        <textarea name="description" rows="3" placeholder="Describe the waste issue..." required></textarea>
+
+                        <label>Attach Photo Evidence (Optional)</label>
+                        <input type="file" name="photo" accept="image/*">
+
+                        <button type="submit" class="btn-submit">Submit Complaint</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Track / Search Complaint -->
+        <div class="col-right">
+            <div class="card">
+                <div class="card-header-blue">🔍 Track Complaint Status</div>
+                <div class="card-body">
+                    <form method="POST" class="search-bar">
+                        <input type="hidden" name="action" value="search">
+                        <input type="text" name="search_id" id="searchInput" value="{{ generated_id if generated_id else '' }}" placeholder="Enter ID (e.g. WMS-1234)" required>
+                        <button type="submit" class="btn-search">Search</button>
+                    </form>
+
+                    {% if error_message %}
+                    <div class="error-box">⚠️ {{ error_message }}</div>
+                    {% endif %}
+
+                    {% if search_result %}
+                    <div class="ticket">
+                        <div class="ticket-top">
+                            <strong style="color: #58a6ff; font-size: 18px;">{{ search_result.id }}</strong>
+                            <span class="badge-status">{{ search_result.status }}</span>
+                        </div>
+                        <p><b>Name:</b> {{ search_result.name }}</p>
+                        <p><b>Phone:</b> {{ search_result.phone }}</p>
+                        <p><b>Location:</b> {{ search_result.location }}</p>
+                        <p><b>Category:</b> <span class="badge-cat">{{ search_result.category }}</span></p>
+                        <p><b>Date:</b> <span style="color: #8b949e;">{{ search_result.date }}</span></p>
+                        
+                        <div class="desc-box">
+                            <small style="color: #8b949e; display: block; margin-bottom: 4px;"><b>Description:</b></small>
+                            {{ search_result.description }}
+                        </div>
+
+                        {% if search_result.photo %}
+                        <div style="margin-top: 12px;">
+                            <small style="color: #8b949e; display: block;"><b>Attached Photo:</b></small>
+                            <img src="{{ url_for('static', filename='uploads/' + search_result.photo) }}" class="complaint-img">
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        Enter your Complaint ID above and click <b>Search</b> to view full details.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyID() {
+        const idText = document.getElementById("cid").innerText;
+        navigator.clipboard.writeText(idText);
+        alert("Copied Complaint ID: " + idText);
+    }
+</script>
+{% endblock %}
