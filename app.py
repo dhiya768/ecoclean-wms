@@ -1,12 +1,33 @@
+
 import csv
 import io
 from datetime import datetime
 import os
 import random
-from flask import Flask, render_template, request, Response
+import hmac
+
+from flask import (
+    Flask, render_template, request, Response,
+    session, redirect, url_for
+)
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+# ---------------- APPLICATION CONFIGURATION ----------------
+
+app.secret_key = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "change-this-secret-key-before-deployment"
+)
+
+# Admin credentials
+# Change these values or set environment variables.
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # Folder where uploaded photos will be saved
 UPLOAD_FOLDER = "static/uploads"
@@ -17,6 +38,11 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 complaints_db = {}
 
 schedules_db = {}
+
+
+# ============================================================
+# MODULE 1: COMPLAINT REGISTRATION
+# ============================================================
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -40,17 +66,23 @@ def home():
             while complaint_id in complaints_db:
                 complaint_id = f"WMS-{random.randint(1000, 9999)}"
 
-            # Handle Photo Upload (if user attached one)
+            # Handle Photo Upload
             photo_filename = None
             photo = request.files.get("photo")
+
             if photo and photo.filename != "":
                 safe_name = secure_filename(photo.filename)
                 photo_filename = f"{complaint_id}_{safe_name}"
                 photo.save(
-                    os.path.join(app.config["UPLOAD_FOLDER"], photo_filename)
+                    os.path.join(
+                        app.config["UPLOAD_FOLDER"],
+                        photo_filename
+                    )
                 )
 
-            current_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
+            current_time = datetime.now().strftime(
+                "%d %b %Y, %I:%M %p"
+            )
 
             # Save into dictionary
             complaints_db[complaint_id] = {
@@ -63,18 +95,22 @@ def home():
                 "date": current_time,
                 "status": "Pending Review",
             }
+
             generated_id = complaint_id
 
         # --- 2. SEARCH COMPLAINT ---
         elif action == "search":
-            search_id = request.form.get("search_id").strip().upper()
+            search_id = request.form.get(
+                "search_id", ""
+            ).strip().upper()
+
             if search_id in complaints_db:
                 search_result = complaints_db[search_id].copy()
                 search_result["id"] = search_id
             else:
                 error_message = (
-                    f"No record found for '{search_id}'. Please check the ID"
-                    " and try again."
+                    f"No record found for '{search_id}'. "
+                    "Please check the ID and try again."
                 )
 
     return render_template(
@@ -85,6 +121,10 @@ def home():
         total_complaints=len(complaints_db),
     )
 
+
+# ============================================================
+# MODULE 2: COLLECTION SCHEDULES
+# ============================================================
 
 @app.route('/schedules', methods=['GET', 'POST'])
 def schedules():
@@ -97,11 +137,16 @@ def schedules():
 
         # 1. Assign a pickup date to an existing Complaint ID
         if action == 'schedule_pickup':
-            cid = request.form.get('complaint_id', '').strip().upper()
+            cid = request.form.get(
+                'complaint_id', ''
+            ).strip().upper()
 
-            # Check if the Complaint ID actually exists in Module 1's complaints!
+            # Check whether the Complaint ID exists
             if cid not in complaints_db:
-                error_message = f"Complaint ID '{cid}' not found. Please register the complaint first."
+                error_message = (
+                    f"Complaint ID '{cid}' not found. "
+                    "Please register the complaint first."
+                )
             else:
                 schedules_db[cid] = {
                     'complaint_id': cid,
@@ -112,19 +157,34 @@ def schedules():
                     'vehicle_no': request.form.get('vehicle_no'),
                     'status': 'Pickup Scheduled'
                 }
-                # Also update the complaint's status in Module 1!
+
+                # Update complaint status
                 complaints_db[cid]['status'] = 'Pickup Scheduled'
-                success_message = f"Pickup scheduled for {cid} on {request.form.get('pickup_date')}!"
+
+                success_message = (
+                    f"Pickup scheduled for {cid} "
+                    f"on {request.form.get('pickup_date')}!"
+                )
 
         # 2. Search scheduled pickup date by Complaint ID
         elif action == 'check_schedule':
-            search_id = request.form.get('search_id', '').strip().upper()
+            search_id = request.form.get(
+                'search_id', ''
+            ).strip().upper()
+
             if search_id in schedules_db:
                 schedule_result = schedules_db[search_id]
+
             elif search_id in complaints_db:
-                error_message = f"Complaint '{search_id}' is registered, but no pickup date has been scheduled yet."
+                error_message = (
+                    f"Complaint '{search_id}' is registered, "
+                    "but no pickup date has been scheduled yet."
+                )
+
             else:
-                error_message = f"No complaint found with ID '{search_id}'."
+                error_message = (
+                    f"No complaint found with ID '{search_id}'."
+                )
 
     return render_template(
         'schedules.html',
@@ -135,60 +195,179 @@ def schedules():
     )
 
 
-# --- MODULE 3: ADMIN DASHBOARD & REPORTS ---
+# ============================================================
+# MODULE 3: ADMIN LOGIN AND DASHBOARD
+# ============================================================
+
 @app.route("/admin", methods=["GET", "POST"])
 def admin_dashboard():
-    success_message = None
 
-    # Allow admin to mark an unresolved complaint as Resolved
+    # --------------------------------------------------------
+    # ADMIN LOGIN
+    # --------------------------------------------------------
+
     if request.method == "POST":
-        resolve_id = request.form.get("resolve_id", "").strip().upper()
-        if resolve_id in complaints_db:
-            complaints_db[resolve_id]["status"] = "Resolved"
-            if resolve_id in schedules_db:
-                schedules_db[resolve_id]["status"] = "Resolved"
-            success_message = f"Complaint {resolve_id} marked as Resolved!"
+
+        action = request.form.get("action")
+
+        # Login form submission
+        if action == "login":
+
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+
+            username_valid = hmac.compare_digest(
+                username, ADMIN_USERNAME
+            )
+
+            password_valid = hmac.compare_digest(
+                password, ADMIN_PASSWORD
+            )
+
+            if username_valid and password_valid:
+
+                session.clear()
+                session["admin_logged_in"] = True
+                session["admin_username"] = username
+
+                return redirect(url_for("admin_dashboard"))
+
+            else:
+                return render_template(
+                    "admin.html",
+                    login_mode=True,
+                    login_error="Invalid username or password."
+                )
+
+        # Only authenticated admins can perform actions
+        if not session.get("admin_logged_in"):
+            return redirect(url_for("admin_dashboard"))
+
+        # Mark complaint as resolved
+        elif action == "resolve":
+
+            resolve_id = request.form.get(
+                "resolve_id", ""
+            ).strip().upper()
+
+            if resolve_id in complaints_db:
+
+                complaints_db[resolve_id]["status"] = "Resolved"
+
+                if resolve_id in schedules_db:
+                    schedules_db[resolve_id]["status"] = "Resolved"
+
+                return redirect(
+                    url_for(
+                        "admin_dashboard",
+                        area=request.args.get("area", "ALL"),
+                        message=f"Complaint {resolve_id} marked as resolved!"
+                    )
+                )
+
+    # --------------------------------------------------------
+    # CHECK ADMIN AUTHENTICATION
+    # --------------------------------------------------------
+
+    if not session.get("admin_logged_in"):
+        return render_template(
+            "admin.html",
+            login_mode=True,
+            login_error=None
+        )
+
+    # --------------------------------------------------------
+    # DASHBOARD STATISTICS
+    # --------------------------------------------------------
+
+    success_message = request.args.get("message")
 
     total_complaints = len(complaints_db)
+
     resolved_count = sum(
-        1 for c in complaints_db.values() if c.get("status") == "Resolved"
+        1 for c in complaints_db.values()
+        if c.get("status") == "Resolved"
     )
+
     unresolved_count = total_complaints - resolved_count
 
-    # 1. Waste Category Statistics
+    # --------------------------------------------------------
+    # WASTE CATEGORY STATISTICS
+    # --------------------------------------------------------
+
     category_counts = {}
+
     for c in complaints_db.values():
+
         cat = c.get("category") or "Uncategorized"
-        category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        category_counts[cat] = (
+            category_counts.get(cat, 0) + 1
+        )
 
     category_stats = {}
-    for cat, count in category_counts.items():
-        percent = round((count / total_complaints) * 100, 1) if total_complaints > 0 else 0
-        category_stats[cat] = {"count": count, "percent": percent}
 
-    # 2. Area-Wise Unresolved Issues
+    for cat, count in category_counts.items():
+
+        percent = (
+            round((count / total_complaints) * 100, 1)
+            if total_complaints > 0 else 0
+        )
+
+        category_stats[cat] = {
+            "count": count,
+            "percent": percent
+        }
+
+    # --------------------------------------------------------
+    # AREA-WISE UNRESOLVED COMPLAINTS
+    # --------------------------------------------------------
+
     area_unresolved = {}
     all_unresolved = []
     all_areas = set()
 
     for cid, c in complaints_db.items():
+
         area = c.get("location") or "Unknown Area"
+
         all_areas.add(area)
+
         if c.get("status") != "Resolved":
+
             item = c.copy()
             item["id"] = cid
-            all_unresolved.append(item)
-            area_unresolved.setdefault(area, []).append(item)
 
-    # Filter detailed table by selected area if chosen
+            all_unresolved.append(item)
+
+            area_unresolved.setdefault(
+                area, []
+            ).append(item)
+
+    # --------------------------------------------------------
+    # FILTER COMPLAINTS BY AREA
+    # --------------------------------------------------------
+
     selected_area = request.args.get("area", "ALL")
+
     if selected_area != "ALL":
-        unresolved_list = [i for i in all_unresolved if i.get("location") == selected_area]
+
+        unresolved_list = [
+            i for i in all_unresolved
+            if i.get("location") == selected_area
+        ]
+
     else:
         unresolved_list = all_unresolved
 
+    # --------------------------------------------------------
+    # RENDER ADMIN DASHBOARD
+    # --------------------------------------------------------
+
     return render_template(
         "admin.html",
+        login_mode=False,
+        admin_username=session.get("admin_username"),
         total_complaints=total_complaints,
         resolved_count=resolved_count,
         unresolved_count=unresolved_count,
@@ -201,8 +380,29 @@ def admin_dashboard():
     )
 
 
+# ============================================================
+# ADMIN LOGOUT
+# ============================================================
+
+@app.route("/admin/logout")
+def admin_logout():
+
+    session.clear()
+
+    return redirect(url_for("admin_dashboard"))
+
+
+# ============================================================
+# MODULE 3: DOWNLOAD CSV REPORT
+# ============================================================
+
 @app.route("/download-report")
 def download_report():
+
+    # Prevent access without admin login
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_dashboard"))
+
     output = io.StringIO()
     writer = csv.writer(output)
 
@@ -218,12 +418,14 @@ def download_report():
         "Description",
     ])
 
-    # Write all complaints (with unresolved first)
+    # Write all complaints (unresolved first)
     sorted_items = sorted(
         complaints_db.items(),
         key=lambda x: x[1].get("status") == "Resolved"
     )
+
     for cid, c in sorted_items:
+
         writer.writerow([
             cid,
             c.get("location", ""),
@@ -241,9 +443,16 @@ def download_report():
     return Response(
         csv_data,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=ecoclean_admin_report.csv"},
+        headers={
+            "Content-Disposition":
+            "attachment; filename=ecoclean_admin_report.csv"
+        },
     )
 
+
+# ============================================================
+# RUN APPLICATION
+# ============================================================
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,128 +1,861 @@
+
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard & Reports | EcoClean WMS{% endblock %}
+{% block title %}Admin | EcoClean WMS{% endblock %}
 
 {% block content %}
-    <div class="hero">
-        <h1>📊 Admin Dashboard & Reports</h1>
-        <p>Live complaint statistics, waste category breakdown, and downloadable area-wise reports.</p>
-    </div>
 
-    {% if success_message %}
-    <div class="id-banner">
-        <h3>✅ {{ success_message }}</h3>
-    </div>
-    {% endif %}
+<style>
 
-    <!-- TOP SUMMARY STATS ROW -->
-    <div class="grid" style="margin-bottom: 25px;">
-        <div class="card" style="flex: 1; min-width: 220px;">
-            <div class="card-header-blue">📋 Total Complaints</div>
-            <div class="card-body" style="text-align: center;">
-                <span class="id-code">{{ total_complaints }}</span>
-            </div>
+/* ================= ADMIN COMMON STYLES ================= */
+
+.admin-page {
+    margin: 25px 0;
+}
+
+.admin-heading {
+    margin-bottom: 22px;
+}
+
+.admin-heading h1 {
+    font-size: 26px;
+    color: #ffffff;
+    margin-bottom: 7px;
+}
+
+.admin-heading p {
+    color: #8b949e;
+    font-size: 14px;
+}
+
+.admin-section {
+    margin-bottom: 25px;
+}
+
+.admin-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.admin-card-heading {
+    padding: 15px 18px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    border-bottom: 1px solid #30363d;
+}
+
+.admin-card-body {
+    padding: 20px;
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.stat-label {
+    color: #8b949e;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.stat-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.stat-note {
+    font-size: 12px;
+    color: #8b949e;
+    margin-top: 7px;
+}
+
+.stat-blue {
+    border-top: 3px solid #388bfd;
+}
+
+.stat-green {
+    border-top: 3px solid #3fb950;
+}
+
+.stat-red {
+    border-top: 3px solid #f85149;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 20px;
+}
+
+.admin-list-item {
+    padding: 13px 0;
+    border-bottom: 1px solid #30363d;
+}
+
+.admin-list-item:last-child {
+    border-bottom: none;
+}
+
+.admin-list-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.admin-progress {
+    width: 100%;
+    height: 7px;
+    background: #30363d;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.admin-progress-fill {
+    height: 100%;
+    background: #3fb950;
+    border-radius: 10px;
+}
+
+.admin-area {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.admin-area:last-child {
+    margin-bottom: 0;
+}
+
+.admin-area p {
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 8px;
+}
+
+.admin-ticket {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-left: 4px solid #d29922;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 14px;
+}
+
+.admin-ticket p {
+    margin: 9px 0;
+    font-size: 14px;
+    color: #c9d1d9;
+    overflow-wrap: anywhere;
+}
+
+.admin-ticket strong {
+    color: #ffffff;
+}
+
+.admin-ticket-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #30363d;
+    margin-bottom: 12px;
+}
+
+.admin-ticket-id {
+    color: #58a6ff;
+    font-size: 17px;
+    font-weight: bold;
+}
+
+.admin-status {
+    background: #d29922;
+    color: #000000;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.admin-resolved-btn {
+    background: #238636;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    padding: 9px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.admin-resolved-btn:hover {
+    background: #2ea043;
+}
+
+.admin-filter {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.admin-filter select {
+    margin-bottom: 0;
+}
+
+.admin-download {
+    display: inline-block;
+    background: #1f6feb;
+    color: white;
+    text-decoration: none;
+    padding: 9px 13px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-download:hover {
+    background: #388bfd;
+}
+
+.admin-success {
+    background: #12261e;
+    border: 1px solid #238636;
+    color: #3fb950;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 22px;
+}
+
+.admin-empty {
+    color: #8b949e;
+    text-align: center;
+    padding: 25px 10px;
+    font-size: 14px;
+}
+
+.admin-logout {
+    display: inline-block;
+    text-decoration: none;
+    color: #f85149;
+    border: 1px solid #da3633;
+    padding: 8px 13px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-logout:hover {
+    background: #3d1418;
+}
+
+/* ================= LOGIN SCREEN ================= */
+
+.login-wrapper {
+    min-height: 75vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 15px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 390px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.login-top {
+    padding: 28px 25px;
+    text-align: center;
+    border-bottom: 1px solid #30363d;
+}
+
+.login-icon {
+    width: 55px;
+    height: 55px;
+    border-radius: 12px;
+    background: #12261e;
+    border: 1px solid #238636;
+    color: #3fb950;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    margin: 0 auto 15px;
+}
+
+.login-top h2 {
+    color: #ffffff;
+    font-size: 23px;
+    margin-bottom: 7px;
+}
+
+.login-top p {
+    color: #8b949e;
+    font-size: 13px;
+}
+
+.login-body {
+    padding: 25px;
+}
+
+.login-body input[type="text"],
+.login-body input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    background: #0d1117;
+    color: #ffffff;
+    border: 1px solid #30363d;
+    border-radius: 7px;
+    margin-bottom: 19px;
+    font-size: 14px;
+}
+
+.login-body input:focus {
+    outline: none;
+    border-color: #3fb950;
+}
+
+.login-button {
+    width: 100%;
+    background: #238636;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.login-button:hover {
+    background: #2ea043;
+}
+
+.login-error {
+    background: #3d1418;
+    color: #ffa198;
+    border: 1px solid #da3633;
+    border-radius: 7px;
+    padding: 11px;
+    margin-bottom: 18px;
+    font-size: 13px;
+}
+
+.login-footer {
+    text-align: center;
+    padding: 15px;
+    border-top: 1px solid #30363d;
+    color: #8b949e;
+    font-size: 12px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 750px) {
+
+    .admin-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-filter {
+        flex-direction: column;
+    }
+
+    .admin-ticket-top {
+        align-items: flex-start;
+    }
+
+}
+
+@media (max-width: 450px) {
+
+    .admin-heading h1 {
+        font-size: 22px;
+    }
+
+    .admin-card-body {
+        padding: 14px;
+    }
+
+}
+
+</style>
+
+
+{% if login_mode %}
+
+<!-- ======================================================
+     ADMIN LOGIN SCREEN
+====================================================== -->
+
+<div class="login-wrapper">
+
+    <div class="login-card">
+
+        <div class="login-top">
+
+            <div class="login-icon">♻</div>
+
+            <h2>Admin Login</h2>
+
+            <p>EcoClean Waste Management System</p>
+
         </div>
 
-        <div class="card" style="flex: 1; min-width: 220px;">
-            <div class="card-header-green">✅ Resolved Issues</div>
-            <div class="card-body" style="text-align: center;">
-                <span class="id-code" style="color: #3fb950; border-color: #3fb950;">{{ resolved_count }}</span>
-            </div>
-        </div>
+        <div class="login-body">
 
-        <div class="card" style="flex: 1; min-width: 220px;">
-            <div class="card-header-blue" style="background-color: #da3633;">⚠️ Unresolved / Pending</div>
-            <div class="card-body" style="text-align: center;">
-                <span class="id-code" style="color: #f85149; border-color: #f85149;">{{ unresolved_count }}</span>
+            {% if login_error %}
+            <div class="login-error">
+                ⚠ {{ login_error }}
             </div>
-        </div>
-    </div>
+            {% endif %}
 
-    <!-- MIDDLE ROW: WASTE CATEGORY STATS & AREA-WISE UNRESOLVED SUMMARY -->
-    <div class="grid" style="margin-bottom: 25px;">
-        <!-- LEFT: Waste Category Statistics -->
-        <div class="col-right">
-            <div class="card">
-                <div class="card-header-green">♻️ Waste Category Statistics</div>
-                <div class="card-body">
-                    {% if category_stats %}
-                        {% for cat, info in category_stats.items() %}
-                        <div class="ticket" style="margin-bottom: 12px;">
-                            <div class="ticket-top">
-                                <span class="badge-cat">{{ cat }}</span>
-                                <strong style="color: #58a6ff;">{{ info.count }} ({{ info.percent }}%)</strong>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="empty-state">No complaints registered yet.</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+            <form method="POST" action="/admin">
 
-        <!-- RIGHT: Area-Wise Unresolved Issues + CSV Download -->
-        <div class="col-left">
-            <div class="card">
-                <div class="card-header-blue" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <span>📍 Area-Wise Unresolved Issues</span>
-                    <a href="/download-report" class="copy-btn" style="text-decoration: none; font-size: 13px;">⬇️ Download CSV Report</a>
-                </div>
-                <div class="card-body">
-                    {% if area_unresolved %}
-                        {% for area, items in area_unresolved.items() %}
-                        <div class="ticket" style="margin-bottom: 12px;">
-                            <div class="ticket-top">
-                                <strong style="color: #ffffff; font-size: 16px;">{{ area }}</strong>
-                                <span class="badge-status" style="background-color: #da3633; color: #ffffff;">{{ items|length }} Unresolved</span>
-                            </div>
-                            <p><b>Pending IDs:</b> <span style="color: #58a6ff;">{{ items | map(attribute='id') | join(', ') }}</span></p>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="empty-state">🎉 Zero unresolved issues across all areas!</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+                <input type="hidden" name="action" value="login">
 
-    <!-- BOTTOM: DETAILED UNRESOLVED COMPLAINTS & MARK RESOLVED -->
-    <div class="card">
-        <div class="card-header-green">🛠️ Unresolved Complaints Action List</div>
-        <div class="card-body">
-            <form method="GET" action="/admin" class="search-bar" style="margin-bottom: 20px;">
-                <select name="area">
-                    <option value="ALL">All Areas</option>
-                    {% for area in all_areas %}
-                        <option value="{{ area }}" {% if selected_area == area %}selected{% endif %}>{{ area }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn-search">Filter Area</button>
+                <label>Username</label>
+
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="Enter admin username"
+                    autocomplete="username"
+                    required
+                >
+
+                <label>Password</label>
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="submit" class="login-button">
+                    Sign In
+                </button>
+
             </form>
 
-            {% if unresolved_list %}
-                {% for item in unresolved_list %}
-                <div class="ticket" style="margin-bottom: 15px;">
-                    <div class="ticket-top">
-                        <strong style="color: #58a6ff; font-size: 18px;">{{ item.id }}</strong>
-                        <span class="badge-status">{{ item.status }}</span>
-                    </div>
-                    <p><b>Area / Location:</b> {{ item.location }}</p>
-                    <p><b>Waste Type:</b> <span class="badge-cat">{{ item.category }}</span></p>
-                    <p><b>Resident:</b> {{ item.name }} ({{ item.phone }})</p>
-                    <p><b>Reported On:</b> {{ item.date }}</p>
-                    <p><b>Issue:</b> {{ item.description }}</p>
-
-                    <form method="POST" action="/admin" style="margin-top: 10px;">
-                        <input type="hidden" name="resolve_id" value="{{ item.id }}">
-                        <button type="submit" class="copy-btn" style="margin-left: 0;">✅ Mark as Resolved</button>
-                    </form>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state">No unresolved complaints found for this selection.</div>
-            {% endif %}
         </div>
+
+        <div class="login-footer">
+            Restricted access · Authorised administrators only
+        </div>
+
     </div>
+
+</div>
+
+
+{% else %}
+
+<!-- ======================================================
+     ADMIN DASHBOARD
+====================================================== -->
+
+<div class="admin-page">
+
+    <!-- HEADER -->
+
+    <div class="admin-heading">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p>Complaint monitoring and waste management overview</p>
+            </div>
+
+            <a href="/admin/logout" class="admin-logout">
+                Logout ↗
+            </a>
+
+        </div>
+
+        <p style="margin-top:12px;">
+            Logged in as:
+            <strong style="color:#3fb950;">
+                {{ admin_username }}
+            </strong>
+        </p>
+
+    </div>
+
+
+    <!-- SUCCESS MESSAGE -->
+
+    {% if success_message %}
+
+    <div class="admin-success">
+        ✓ {{ success_message }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- SUMMARY STATISTICS -->
+
+    <div class="admin-stats">
+
+        <div class="stat-card stat-blue">
+
+            <div class="stat-label">TOTAL COMPLAINTS</div>
+
+            <div class="stat-value">
+                {{ total_complaints }}
+            </div>
+
+            <div class="stat-note">
+                All registered complaints
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-green">
+
+            <div class="stat-label">RESOLVED COMPLAINTS</div>
+
+            <div class="stat-value" style="color:#3fb950;">
+                {{ resolved_count }}
+            </div>
+
+            <div class="stat-note">
+                Successfully completed
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-red">
+
+            <div class="stat-label">PENDING COMPLAINTS</div>
+
+            <div class="stat-value" style="color:#f85149;">
+                {{ unresolved_count }}
+            </div>
+
+            <div class="stat-note">
+                Awaiting resolution
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- CATEGORY AND AREA STATISTICS -->
+
+    <div class="admin-grid admin-section">
+
+
+        <!-- WASTE CATEGORY -->
+
+        <div class="admin-card">
+
+            <div class="admin-card-heading">
+                ♻ Waste Category Statistics
+            </div>
+
+            <div class="admin-card-body">
+
+                {% if category_stats %}
+
+                    {% for cat, info in category_stats.items() %}
+
+                    <div class="admin-list-item">
+
+                        <div class="admin-list-top">
+
+                            <strong style="color:#c9d1d9;">
+                                {{ cat }}
+                            </strong>
+
+                            <span style="color:#58a6ff; font-size:13px;">
+                                {{ info.count }} ({{ info.percent }}%)
+                            </span>
+
+                        </div>
+
+                        <div class="admin-progress">
+
+                            <div
+                                class="admin-progress-fill"
+                                style="width:{{ info.percent }}%;"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="admin-empty">
+                        No complaints registered yet.
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+        <!-- AREA-WISE PENDING -->
+
+        <div class="admin-card">
+
+            <div class="admin-card-heading"
+                 style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+
+                <span>📍 Area-wise Pending Issues</span>
+
+                <a href="/download-report" class="admin-download">
+                    ↓ Download CSV
+                </a>
+
+            </div>
+
+            <div class="admin-card-body">
+
+                {% if area_unresolved %}
+
+                    {% for area, items in area_unresolved.items() %}
+
+                    <div class="admin-area">
+
+                        <div class="admin-list-top">
+
+                            <strong style="color:#ffffff;">
+                                {{ area }}
+                            </strong>
+
+                            <span class="admin-status">
+                                {{ items|length }} Pending
+                            </span>
+
+                        </div>
+
+                        <p>
+                            <strong>Complaint IDs:</strong>
+
+                            <span style="color:#58a6ff;">
+                                {{ items | map(attribute='id') | join(', ') }}
+                            </span>
+                        </p>
+
+                    </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="admin-empty">
+                        ✓ All complaints have been resolved.
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- COMPLAINT MANAGEMENT -->
+
+    <div class="admin-card admin-section">
+
+        <div class="admin-card-heading"
+             style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+
+            <span>Complaint Management</span>
+
+            <span style="font-size:12px; color:#8b949e;">
+                {{ unresolved_list|length }} complaints displayed
+            </span>
+
+        </div>
+
+
+        <div class="admin-card-body">
+
+
+            <!-- AREA FILTER -->
+
+            <form method="GET" action="/admin" class="admin-filter">
+
+                <select name="area">
+
+                    <option value="ALL">
+                        All Areas
+                    </option>
+
+                    {% for area in all_areas %}
+
+                    <option
+                        value="{{ area }}"
+                        {% if selected_area == area %}selected{% endif %}
+                    >
+                        {{ area }}
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+                <button type="submit" class="btn-search">
+                    Apply Filter
+                </button>
+
+            </form>
+
+
+            <!-- PENDING COMPLAINT LIST -->
+
+            {% if unresolved_list %}
+
+                {% for item in unresolved_list %}
+
+                <div class="admin-ticket">
+
+                    <div class="admin-ticket-top">
+
+                        <span class="admin-ticket-id">
+                            {{ item.id }}
+                        </span>
+
+                        <span class="admin-status">
+                            {{ item.status }}
+                        </span>
+
+                    </div>
+
+
+                    <p>
+                        <strong>Location:</strong>
+                        {{ item.location }}
+                    </p>
+
+                    <p>
+                        <strong>Waste Category:</strong>
+
+                        <span class="badge-cat">
+                            {{ item.category }}
+                        </span>
+                    </p>
+
+                    <p>
+                        <strong>Resident:</strong>
+                        {{ item.name }}
+                    </p>
+
+                    <p>
+                        <strong>Contact:</strong>
+                        {{ item.phone }}
+                    </p>
+
+                    <p>
+                        <strong>Reported On:</strong>
+                        {{ item.date }}
+                    </p>
+
+                    <p>
+                        <strong>Description:</strong>
+                        {{ item.description }}
+                    </p>
+
+
+                    <!-- RESOLVE COMPLAINT -->
+
+                    <form method="POST" action="/admin?area={{ selected_area|urlencode }}">
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="resolve"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="resolve_id"
+                            value="{{ item.id }}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="admin-resolved-btn"
+                        >
+                            ✓ Mark as Resolved
+                        </button>
+
+                    </form>
+
+                </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="admin-empty">
+
+                    {% if total_complaints == 0 %}
+
+                        No complaints have been registered yet.
+
+                    {% elif selected_area != 'ALL' %}
+
+                        No pending complaints found in this area.
+
+                    {% else %}
+
+                        ✓ Great! All complaints have been resolved.
+
+                    {% endif %}
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
 {% endblock %}
